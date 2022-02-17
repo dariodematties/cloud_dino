@@ -1,2 +1,5 @@
 # Ignore __pycache__ folder
 __pycache__
+
+# Ignoring vim generated files
+*.swp
