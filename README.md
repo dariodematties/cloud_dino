@@ -1,6 +1,8 @@
 # Self-Supervised Vision Transformers for Cloud segmentation and characterization Cloud-DINO
 
-PyTorch implementation for Cloud-DINO.  
+PyTorch implementation for Cloud-DINO.
+
+This project is based in the [original DINO](https://github.com/facebookresearch/dino) repository by [Facebook AI research group](https://ai.facebook.com/).
 
 ## For training Cloud-DINO
 
