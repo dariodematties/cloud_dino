@@ -130,7 +130,7 @@ class ReturnIndexDataset(datasets.ImageFolder):
         return img, idx
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser('Inference using pretrained weights and unsupervised clustering')
+    parser = argparse.ArgumentParser('Inference using pretrained weights')
     parser.add_argument('--batch_size_per_gpu', default=2, type=int, help='Per-GPU batch-size')
     parser.add_argument("--image_size", default=(1024, 1024), type=int, nargs="+", help="Resize image.")
     parser.add_argument('--pretrained_weights', default='', type=str, help="Path to pretrained weights to evaluate.")
