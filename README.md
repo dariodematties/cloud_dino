@@ -12,6 +12,12 @@ This project is based in the [original DINO](https://github.com/facebookresearch
 
 `python3 -m torch.distributed.launch --nproc_per_node=1 cloud_dino_inference.py --data_path /path/to/your/sky_images/ --pretrained_weights /path/to/your/model/checkpoint0000.pth --dump_features /path/to/your/features/`
 
+## Running associative inference to obtain Cloud-DINO's features and their respective file input names
+
+Here we are truncating the inference ptocess to only 100 samples. That means that after the first 100 samples the inference process will be stoped.
+
+`python3 -m torch.distributed.launch --nproc_per_node=1 cloud_dino_associative_inference.py --data_path /path/to/your/sky_images/ --pretrained_weights /path/to/your/model/checkpoint0000.pth --dump_features /path/to/your/features/ --inference_up_to 100`
+
 ## Training Cloud-DINO in a node on 8 GPUs
 
 To run it during 10 min do
