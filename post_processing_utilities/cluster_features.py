@@ -23,6 +23,9 @@ from sklearn.decomposition import PCA
 from sklearn.decomposition import TruncatedSVD as SVD
 from sklearn.preprocessing import StandardScaler
 from sklearn.neighbors import KNeighborsClassifier
+
+from joblib import dump, load
+
 def get_args_parser():
     parser = argparse.ArgumentParser('Features post processing using dimensionality reduction and clustering', add_help=False)
     parser.add_argument('--features_path', default='', type=str, help="Path to the features to be processed.")
@@ -42,6 +45,7 @@ def get_args_parser():
 
     # General arguments
     parser.add_argument('--output_dir', default='.', help='Path where to save clustering results.')
+    parser.add_argument('--subsample_feats', default=None, type=int, help='Subsample the feature space to a reduce number of samples.')
 
     return parser
 
@@ -53,35 +57,34 @@ def get_args_parser():
 
 
 def process_features(args):
-    x = bring_features(args.features_path)
-    x = reduce_dim(x, args.dim_red_method, args.dimensions)
+    (scale_model, x) = bring_features(args)
+    (dim_red_model, x) = reduce_dim(x, args.dim_red_method, args.dimensions)
     y = cluster_data(x, args)
 
     clusters = {'x': x, 'y': y}
-    # save results
-    os.makedirs(args.output_dir, exist_ok=True)
-    clusters_fname = os.path.join(args.output_dir, "clusters")
-    np.save(clusters_fname, clusters)
-    print(f"{clusters_fname} saved.")
+
+    return clusters, dim_red_model, scale_model
 
 
+def bring_features(args):
+    feats = torch.load(args.features_path)
+    if args.subsample_feats:
+        feats = choose_random_rows(feats, args.subsample_feats)
 
-
-def bring_features(path):
-    feats = torch.load(path)
-    feats = StandardScaler().fit_transform(feats)
-    return feats
+    scale = StandardScaler()
+    feats = scale.fit_transform(feats)
+    return scale, feats
 
 
 def reduce_dim(feats, method='PCA', dimensions=2):
     if method == 'PCA':
         pca = PCA(n_components=dimensions, svd_solver='full')
         pca.fit(feats)
-        return pca.transform(feats)
+        return pca, pca.transform(feats)
     elif method == 'SVD':
         svd = SVD(n_components=dimensions)
         svd.fit(feats)
-        return svd.transform(feats)
+        return svd, svd.transform(feats)
     else:
         raise NameError(f"Unknow dimensionality reduction method: {method}")
 
@@ -97,7 +100,11 @@ def cluster_data(data, args):
     return labels
 
 
-
+def choose_random_rows(an_array, n_samples):
+    number_of_rows = an_array.shape[0]
+    random_indices = np.random.choice(number_of_rows, size=n_samples, replace=False)
+    random_rows = an_array[random_indices, :]
+    return random_rows
 
 
 
@@ -106,4 +113,19 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser('Cloud-DINO', parents=[get_args_parser()])
     args = parser.parse_args()
     Path(args.output_dir).mkdir(parents=True, exist_ok=True)
-    process_features(args)
+    (clusters, dim_red_model, scale_model) = process_features(args)
+
+    # save results
+    os.makedirs(args.output_dir, exist_ok=True)
+    clusters_fname = os.path.join(args.output_dir, "clusters")
+    np.save(clusters_fname, clusters)
+    print(f"{clusters_fname} saved.")
+
+    red_dim_model_fname = os.path.join(args.output_dir, "dim_red_model")
+    dump(dim_red_model, red_dim_model_fname)
+    print(f"{red_dim_model_fname} saved.")
+
+    scale_model_fname = os.path.join(args.output_dir, "scale_model")
+    dump(scale_model, scale_model_fname)
+    print(f"{scale_model_fname} saved.")
+
