@@ -4,6 +4,8 @@ import argparse
 import datetime
 import time
 
+import numpy as np
+
 import torch
 from torch import nn
 import torch.distributed as dist
@@ -25,6 +27,7 @@ def extract_feature_pipeline(args):
         pth_transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
     ])
     dataset = ReturnIndexDataset(args.data_path, transform=transform)
+
     sampler = torch.utils.data.DistributedSampler(dataset, shuffle=True)
     data_loader = torch.utils.data.DataLoader(
         dataset,
@@ -81,7 +84,14 @@ def extract_feature_pipeline(args):
 def extract_features(model, data_loader, use_cuda=True):
     metric_logger = utils.MetricLogger(delimiter="  ")
     features = None
+    if args.inference_up_to:
+        cumulative_indexes = torch.zeros(len(data_loader.dataset), dtype=torch.bool)
+        counter = 0
+
     for images, index in metric_logger.log_every(data_loader, 10):
+        if args.inference_up_to and counter >= args.inference_up_to:
+                break
+
         # move images to gpu
         images = images.cuda(non_blocking=True)
         index = index.cuda(non_blocking=True)
@@ -102,6 +112,9 @@ def extract_features(model, data_loader, use_cuda=True):
         y_all_reduce = torch.distributed.all_gather(y_l, index, async_op=True)
         y_all_reduce.wait()
         index_all = torch.cat(y_l)
+        if args.inference_up_to:
+            counter += (dist.get_world_size() * args.batch_size_per_gpu)
+            cumulative_indexes[index_all] = True
 
         # share features between processes
         feats_all = torch.empty(
@@ -121,6 +134,9 @@ def extract_features(model, data_loader, use_cuda=True):
                 features.index_copy_(0, index_all, torch.cat(output_l))
             else:
                 features.index_copy_(0, index_all.cpu(), torch.cat(output_l).cpu())
+
+    if args.inference_up_to:
+        features = features[cumulative_indexes]
 
     return features
 
@@ -149,6 +165,7 @@ if __name__ == '__main__':
         distributed training; see https://pytorch.org/docs/stable/distributed.html""")
     parser.add_argument("--local_rank", default=0, type=int, help="Please ignore and do not set this argument.")
     parser.add_argument('--data_path', default='/path/to/sky_images/', type=str)
+    parser.add_argument('--inference_up_to', default=None, type=int, help='Inference up to n samples from the complete dataset')
     args = parser.parse_args()
 
     utils.init_distributed_mode(args)
