@@ -72,7 +72,7 @@ def get_args_parser():
         of the teacher temperature. For most experiments, anything above 0.07 is unstable. We recommend
         starting with the default value of 0.04 and increase this slightly if needed.""")
     parser.add_argument('--warmup_teacher_temp_epochs', default=0, type=int,
-        help='Number of warmup epochs for the teacher temperature (Default: 30).')
+        help='Number of warmup epochs for the teacher temperature (Default: 0).')
 
     # Training/Optimization parameters
     parser.add_argument('--use_fp16', type=utils.bool_flag, default=True, help="""Whether or not
