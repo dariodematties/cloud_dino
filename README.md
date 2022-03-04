@@ -64,3 +64,9 @@ cd $dino_path
 singularity exec --nv -B $sky_images_path:/Sky_Images $singularity_image_path python -m torch.distributed.launch --nproc_per_node=8 $inference_cloud_dino_path --data_path /Sky_Images --pretrained_weights $model_path --dump_features $output_path
 ```
 
+
+## For visualizing attention maps
+
+For attention maps visualiztions, run the following command
+
+`python3 visualize_attention.py --pretrained_weights /path/to/your/pretrained/weights/checkpoint.pth --image_path /path/to/the/image.jpg --image_size size_of_the_image --output_dir /where/to/save/the/maps/ --threshold (a number between 0 and 1) --patch_size 8-16`
