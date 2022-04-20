@@ -111,12 +111,21 @@ def extract_features(model, data_loader, use_cuda=True):
         cumulative_indexes = torch.zeros(len(data_loader.dataset), dtype=torch.bool)
         counter = 0
 
+    printing=True
     for images, index, path in metric_logger.log_every(data_loader, 10):
         if args.inference_up_to and counter >= args.inference_up_to:
                 break
 
         # move images to gpu
         images = images.cuda(non_blocking=True)
+
+        # make the image divisible by the patch size
+        w, h = images.shape[-2] - images.shape[-2] % args.patch_size, images.shape[-1] - images.shape[-1] % args.patch_size
+        images = images[:, :, :w, :h]
+        if printing and dist.get_rank() == 0:
+            printing=False
+            print('images shape is ', images.shape)
+
         index = index.cuda(non_blocking=True)
 
         # get file names
