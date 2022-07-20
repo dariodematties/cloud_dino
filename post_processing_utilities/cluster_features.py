@@ -19,6 +19,8 @@ import numpy as np
 import torch
 
 from sklearn.cluster import DBSCAN
+from sklearn.cluster import KMeans
+from sklearn_som.som import SOM
 from sklearn.decomposition import PCA
 from sklearn.decomposition import TruncatedSVD as SVD
 from sklearn.preprocessing import StandardScaler
@@ -44,7 +46,7 @@ def get_args_parser():
             This includes the point itself (Default 5).""")
 
     # General arguments
-    parser.add_argument('--output_dir', default='.', help='Path where to save clustering results.')
+    parser.add_argument('--output_dir', default=None, help='Path where to save clustering results.')
     parser.add_argument('--subsample_feats', default=None, type=int, help='Subsample the feature space to a reduce number of samples.')
 
     return parser
@@ -78,7 +80,9 @@ def bring_features(args):
 
 def reduce_dim(feats, method='PCA', dimensions=2):
     if method == 'PCA':
-        pca = PCA(n_components=dimensions, svd_solver='full')
+        pca = PCA(n_components='mle', svd_solver='full')
+        #pca = PCA(n_components=0.99999, svd_solver='full')
+        #pca = PCA(n_components=dimensions, svd_solver='full')
         pca.fit(feats)
         return pca, pca.transform(feats)
     elif method == 'SVD':
@@ -94,6 +98,13 @@ def cluster_data(data, args):
     if args.clustering_method == 'DBSCAN':
         # Compute Density-based spatial clustering of applications with noise (DBSCAN)
         labels = DBSCAN(eps=args.dbscan_eps, min_samples=args.dbscan_min_samples).fit_predict(data)
+    elif args.clustering_method == 'KMEANS':
+        # Compute K-Means clustering 
+        labels = KMeans(init="k-means++", n_clusters=100, n_init=100).fit_predict(data)
+    elif args.clustering_method == 'SOM':
+        # Comput SOM clustering
+        #labels = SOM(m=2, n=4, dim=2).fit_predict(data)
+        labels = SOM(m=10, n=10, dim=383).fit_predict(data)
     else:
         raise NameError(f"Unknow clustering algorithm method: {args.clustering_method}")
 
@@ -107,14 +118,7 @@ def choose_random_rows(an_array, n_samples):
     return random_rows
 
 
-
-
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser('Cloud-DINO', parents=[get_args_parser()])
-    args = parser.parse_args()
-    Path(args.output_dir).mkdir(parents=True, exist_ok=True)
-    (clusters, dim_red_model, scale_model) = process_features(args)
-
+def save_process(args, clusters, dim_red_model, scale_model):
     # save results
     os.makedirs(args.output_dir, exist_ok=True)
     clusters_fname = os.path.join(args.output_dir, "clusters")
@@ -128,4 +132,17 @@ if __name__ == '__main__':
     scale_model_fname = os.path.join(args.output_dir, "scale_model")
     dump(scale_model, scale_model_fname)
     print(f"{scale_model_fname} saved.")
+
+
+
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser('Cloud-DINO', parents=[get_args_parser()])
+    args = parser.parse_args()
+    Path(args.output_dir).mkdir(parents=True, exist_ok=True)
+    (clusters, dim_red_model, scale_model) = process_features(args)
+
+    if args.output_dir:
+        save_process(args, clusters, dim_red_model, scale_model)
 
